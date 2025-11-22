@@ -872,10 +872,17 @@
                     showNewComplaintNotification(newComplaint);
 
                     // ✅ إرسال إشعار حقيقي إلى OneSignal عبر Netlify Function
-                    fetch('/.netlify/functions/notify', {
+                    fetch('/api/notify', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ complaint: newComplaint })
+                    }).then(response => {
+                        if (!response.ok) {
+                            console.error('❌ فشل إرسال إشعار OneSignal:', response.status);
+                        }
+                        return response.json();
+                    }).then(data => {
+                        console.log('✅ إشعار OneSignal تم إرساله:', data);
                     }).catch(err => console.error('❌ فشل إرسال إشعار OneSignal:', err));
                 })
                 .subscribe();
