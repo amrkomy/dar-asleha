@@ -822,472 +822,537 @@
     </div>
     <!-- حاوية الإشعارات -->
     <div id="toast-container" class="toast-container"></div>
-    <script>
-        // تهيئة Supabase
-        const supabaseUrl = 'https://xqccuvhtrxhsrzqgktdj.supabase.co';
-        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhxY2N1dmh0cnhoc3J6cWdrdGRqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU0MzI5MDMsImV4cCI6MjA3MTAwODkwM30.wDVE-gsAUgjmv82pYKoMMMeF3YRAgFVWg854G5YLpyE';
-        const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+  <script>
+    // تهيئة Supabase
+    const supabaseUrl = 'https://xqccuvhtrxhsrzqgktdj.supabase.co';
+    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhxY2N1dmh0cnhoc3J6cWdrdGRqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU0MzI5MDMsImV4cCI6MjA3MTAwODkwM30.wDVE-gsAUgjmv82pYKoMMMeF3YRAgFVWg854G5YLpyE';
+    const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
 
-        // عناصر DOM
-        const complaintsList = document.getElementById('complaints-list');
-        const complaintModal = document.getElementById('complaint-modal');
-        const closeModalBtn = document.querySelector('.close-modal');
-        const closeModalBtn2 = document.getElementById('close-modal-btn');
-        const statusFilter = document.getElementById('status-filter');
-        const searchInput = document.getElementById('search');
-        const toastContainer = document.getElementById('toast-container');
-        const saveStatusBtn = document.getElementById('save-status-btn');
-        const statusButtons = document.querySelectorAll('.status-btn');
-        const commentInput = document.getElementById('comment-input');
-        const addCommentBtn = document.getElementById('add-comment-btn');
-        const commentsList = document.getElementById('comments-list');
-        const installButton = document.getElementById('installButton');
+    // عناصر DOM
+    const complaintsList = document.getElementById('complaints-list');
+    const complaintModal = document.getElementById('complaint-modal');
+    const closeModalBtn = document.querySelector('.close-modal');
+    const closeModalBtn2 = document.getElementById('close-modal-btn');
+    const statusFilter = document.getElementById('status-filter');
+    const searchInput = document.getElementById('search');
+    const toastContainer = document.getElementById('toast-container');
+    const saveStatusBtn = document.getElementById('save-status-btn');
+    const statusButtons = document.querySelectorAll('.status-btn');
+    const commentInput = document.getElementById('comment-input');
+    const addCommentBtn = document.getElementById('add-comment-btn');
+    const commentsList = document.getElementById('comments-list');
+    const installButton = document.getElementById('installButton');
 
-        // إحصائيات
-        const totalComplaints = document.getElementById('total-complaints');
-        const pendingComplaints = document.getElementById('pending-complaints');
-        const resolvedComplaints = document.getElementById('resolved-complaints');
-        const rejectedComplaints = document.getElementById('rejected-complaints');
+    // إحصائيات
+    const totalComplaints = document.getElementById('total-complaints');
+    const pendingComplaints = document.getElementById('pending-complaints');
+    const resolvedComplaints = document.getElementById('resolved-complaints');
+    const rejectedComplaints = document.getElementById('rejected-complaints');
 
-        // متغيرات التطبيق
-        let complaints = [];
-        let currentComplaintId = null;
-        let currentComplaintStatus = null;
-        let selectedStatus = null;
-        let lastComplaintIds = new Set();
+    // متغيرات التطبيق
+    let complaints = [];
+    let currentComplaintId = null;
+    let currentComplaintStatus = null;
+    let selectedStatus = null;
+    let lastComplaintIds = new Set();
 
-        // ✅ Realtime listener + إرسال إشعار حقيقي عبر Netlify Function
-        function startRealtimeListener() {
-            supabase
-                .channel('complaints-realtime')
-                .on('postgres_changes', {
-                    event: 'INSERT',
-                    schema: 'public',
-                    table: 'complaints'
-                }, (payload) => {
-                    const newComplaint = payload.new;
-                    console.log('✅ شكوى جديدة عبر Realtime:', newComplaint);
+    // ✅ Realtime listener محسّن
+    function startRealtimeListener() {
+        console.log('🚀 بدء الاستماع للتحديثات المباشرة...');
+        
+        const channel = supabase
+            .channel('complaints-realtime')
+            .on('postgres_changes', {
+                event: 'INSERT',
+                schema: 'public',
+                table: 'complaints'
+            }, async (payload) => {
+                console.log('✅ شكوى جديدة عبر Realtime:', payload.new);
+                const newComplaint = payload.new;
 
-                    // إشعار داخلي فقط (بدون صوت)
-                    showNewComplaintNotification(newComplaint);
+                // إشعار داخلي
+                showNewComplaintNotification(newComplaint);
 
-                    // ✅ إرسال إشعار حقيقي إلى OneSignal عبر Netlify Function
-                    fetch('/api/notify', {
+                // ✅ إرسال إشعار OneSignal
+                try {
+                    console.log('📨 إرسال إشعار OneSignal...');
+                    const response = await fetch('/api/notify', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: { 
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json'
+                        },
                         body: JSON.stringify({ complaint: newComplaint })
-                    }).then(response => {
-                        if (!response.ok) {
-                            console.error('❌ فشل إرسال إشعار OneSignal:', response.status);
-                        }
-                        return response.json();
-                    }).then(data => {
-                        console.log('✅ إشعار OneSignal تم إرساله:', data);
-                    }).catch(err => console.error('❌ فشل إرسال إشعار OneSignal:', err));
-                })
-                .subscribe();
-        }
+                    });
 
-        // تحميل الشكاوى من Supabase
-        async function loadComplaints() {
-            try {
-                let query = supabase
-                    .from('complaints')
-                    .select('*')
-                    .order('created_at', { ascending: false });
+                    console.log('📩 استجابة الـ Function:', response.status);
+                    
+                    if (!response.ok) {
+                        const errorText = await response.text();
+                        console.error('❌ فشل إرسال إشعار OneSignal:', response.status, errorText);
+                        return;
+                    }
 
-                const status = statusFilter.value;
-                if (status !== 'all') {
-                    query = query.eq('status', status);
+                    const result = await response.json();
+                    console.log('✅ إشعار OneSignal تم إرساله:', result);
+                    
+                    if (result.errors) {
+                        console.error('❌ أخطاء OneSignal:', result.errors);
+                    }
+                    
+                } catch (error) {
+                    console.error('💥 خطأ في إرسال الإشعار:', error);
                 }
+            })
+            .subscribe((status) => {
+                console.log('📡 حالة الاشتراك Realtime:', status);
+            });
 
-                const searchTerm = searchInput.value.trim();
-                if (searchTerm) {
-                    query = query.or(`name.ilike.%${searchTerm}%,phone.ilike.%${searchTerm}%`);
-                }
+        return channel;
+    }
 
-                const { data, error } = await query;
-                if (error) {
-                    console.error('Error loading complaints:', error);
-                    showToast('حدث خطأ في تحميل الشكاوى', 'error');
-                    return;
-                }
+    // تحميل الشكاوى من Supabase
+    async function loadComplaints() {
+        try {
+            let query = supabase
+                .from('complaints')
+                .select('*')
+                .order('created_at', { ascending: false });
 
-                complaints = data || [];
-                renderComplaints();
-                updateStats();
-                checkForNewComplaints();
-            } catch (error) {
+            const status = statusFilter.value;
+            if (status !== 'all') {
+                query = query.eq('status', status);
+            }
+
+            const searchTerm = searchInput.value.trim();
+            if (searchTerm) {
+                query = query.or(`name.ilike.%${searchTerm}%,phone.ilike.%${searchTerm}%`);
+            }
+
+            const { data, error } = await query;
+            if (error) {
                 console.error('Error loading complaints:', error);
                 showToast('حدث خطأ في تحميل الشكاوى', 'error');
-            }
-        }
-
-        // التحقق من وجود شكاوى جديدة
-        function checkForNewComplaints() {
-            const currentIds = new Set(complaints.map(c => c.id));
-            if (lastComplaintIds.size === 0) {
-                lastComplaintIds = currentIds;
                 return;
             }
-            const newComplaints = complaints.filter(complaint => !lastComplaintIds.has(complaint.id));
-            if (newComplaints.length > 0) {
-                newComplaints.forEach(complaint => {
-                    showNewComplaintNotification(complaint);
-                });
-            }
+
+            complaints = data || [];
+            renderComplaints();
+            updateStats();
+            checkForNewComplaints();
+        } catch (error) {
+            console.error('Error loading complaints:', error);
+            showToast('حدث خطأ في تحميل الشكاوى', 'error');
+        }
+    }
+
+    // التحقق من وجود شكاوى جديدة
+    function checkForNewComplaints() {
+        const currentIds = new Set(complaints.map(c => c.id));
+        if (lastComplaintIds.size === 0) {
             lastComplaintIds = currentIds;
+            return;
         }
-
-        // تحديث الإحصائيات
-        function updateStats() {
-            totalComplaints.textContent = complaints.length;
-            pendingComplaints.textContent = complaints.filter(c => c.status === 'pending').length;
-            resolvedComplaints.textContent = complaints.filter(c => c.status === 'resolved').length;
-            rejectedComplaints.textContent = complaints.filter(c => c.status === 'rejected').length;
-        }
-
-        // عرض الشكاوى في القائمة
-        function renderComplaints() {
-            if (complaints.length === 0) {
-                complaintsList.innerHTML = `
-                    <div class="empty-state">
-                        <i class="fas fa-inbox"></i>
-                        <h3>لا توجد شكاوى لعرضها</h3>
-                        <p>سيتم عرض الشكاوى هنا عند توفرها</p>
-                    </div>
-                `;
-                return;
-            }
-            complaintsList.innerHTML = '';
-            complaints.forEach(complaint => {
-                const statusClass = `status-${complaint.status}`;
-                let statusText = 'قيد المعالجة';
-                if (complaint.status === 'resolved') statusText = 'تم الحل';
-                if (complaint.status === 'rejected') statusText = 'مرفوضة';
-
-                const complaintDate = new Date(complaint.created_at).toLocaleDateString('ar-EG');
-                const rating = complaint.rating || 0;
-                let starsHtml = '';
-                for (let i = 1; i <= 5; i++) {
-                    starsHtml += `<i class="fas fa-star star ${i <= rating ? 'filled' : ''}"></i>`;
-                }
-
-                const complaintItem = document.createElement('div');
-                complaintItem.className = 'complaint-item';
-                complaintItem.innerHTML = `
-                    <div class="complaint-info">
-                        <div><strong>${complaint.name}</strong> - ${complaint.phone}</div>
-                        <div class="complaint-text">${complaint.complaint}</div>
-                        <div class="rating-stars">
-                            ${starsHtml}
-                        </div>
-                        <div class="complaint-meta">
-                            <span>رقم #${complaint.id}</span>
-                            <span>${complaintDate}</span>
-                        </div>
-                    </div>
-                    <div class="complaint-actions">
-                        <span class="status-badge ${statusClass}">${statusText}</span>
-                        <button class="btn btn-view manage-btn" data-id="${complaint.id}">
-                            <i class="fas fa-cog"></i> إدارة
-                        </button>
-                    </div>
-                `;
-                complaintsList.appendChild(complaintItem);
-            });
-
-            document.querySelectorAll('.manage-btn').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    const complaintId = btn.getAttribute('data-id');
-                    openComplaintModal(complaintId);
-                });
+        const newComplaints = complaints.filter(complaint => !lastComplaintIds.has(complaint.id));
+        if (newComplaints.length > 0) {
+            newComplaints.forEach(complaint => {
+                showNewComplaintNotification(complaint);
             });
         }
+        lastComplaintIds = currentIds;
+    }
 
-        // فتح نموذج معاينة الشكوى
-        async function openComplaintModal(complaintId) {
-            const complaint = complaints.find(c => c.id == complaintId);
-            if (!complaint) return;
-            currentComplaintId = complaintId;
-            currentComplaintStatus = complaint.status;
-            selectedStatus = complaint.status;
-            document.getElementById('modal-id').textContent = complaint.id;
-            document.getElementById('modal-name').textContent = complaint.name;
-            document.getElementById('modal-phone').textContent = complaint.phone;
+    // تحديث الإحصائيات
+    function updateStats() {
+        totalComplaints.textContent = complaints.length;
+        pendingComplaints.textContent = complaints.filter(c => c.status === 'pending').length;
+        resolvedComplaints.textContent = complaints.filter(c => c.status === 'resolved').length;
+        rejectedComplaints.textContent = complaints.filter(c => c.status === 'rejected').length;
+    }
+
+    // عرض الشكاوى في القائمة
+    function renderComplaints() {
+        if (complaints.length === 0) {
+            complaintsList.innerHTML = `
+                <div class="empty-state">
+                    <i class="fas fa-inbox"></i>
+                    <h3>لا توجد شكاوى لعرضها</h3>
+                    <p>سيتم عرض الشكاوى هنا عند توفرها</p>
+                </div>
+            `;
+            return;
+        }
+        complaintsList.innerHTML = '';
+        complaints.forEach(complaint => {
+            const statusClass = `status-${complaint.status}`;
             let statusText = 'قيد المعالجة';
             if (complaint.status === 'resolved') statusText = 'تم الحل';
             if (complaint.status === 'rejected') statusText = 'مرفوضة';
-            const statusBadge = document.getElementById('modal-status');
-            statusBadge.textContent = statusText;
-            statusBadge.className = `status-badge status-${complaint.status}`;
-            const rating = complaint.rating || 0;
-            const ratingStars = document.getElementById('rating-stars');
-            ratingStars.innerHTML = '';
-            for (let i = 1; i <= 5; i++) {
-                const star = document.createElement('i');
-                star.className = `fas fa-star star ${i <= rating ? 'filled' : ''}`;
-                ratingStars.appendChild(star);
-            }
-            document.getElementById('modal-complaint').textContent = complaint.complaint;
-            const complaintDate = new Date(complaint.created_at).toLocaleDateString('ar-EG');
-            document.getElementById('modal-created-at').textContent = complaintDate;
-            statusButtons.forEach(btn => {
-                btn.classList.remove('active');
-                if (btn.getAttribute('data-status') === complaint.status) {
-                    btn.classList.add('active');
-                }
-            });
-            await loadComments();
-            complaintModal.style.display = 'block';
-        }
 
-        // تحميل التعليقات
-        async function loadComments() {
-            if (!currentComplaintId) return;
-            try {
-                const { data, error } = await supabase
-                    .from('complaints')
-                    .select('admin_comment')
-                    .eq('id', currentComplaintId)
-                    .single();
-                if (error) {
-                    console.error('Error loading comments:', error);
-                    commentsList.innerHTML = '<p class="no-comments">حدث خطأ في تحميل التعليقات</p>';
-                    return;
-                }
-                commentsList.innerHTML = '';
-                if (data && data.admin_comment) {
-                    const comments = data.admin_comment.split('\n').filter(comment => comment.trim() !== '');
-                    if (comments.length > 0) {
-                        comments.forEach(comment => {
-                            const commentItem = document.createElement('div');
-                            commentItem.className = 'comment-item';
-                            if (comment.includes(']')) {
-                                const parts = comment.split(']');
-                                const timestamp = parts[0].replace('[', '');
-                                const commentText = parts.slice(1).join(']').trim();
-                                commentItem.innerHTML = `
-                                    <div class="comment-header">
-                                        <span>${timestamp}</span>
-                                    </div>
-                                    <div>${commentText}</div>
-                                `;
-                            } else {
-                                commentItem.innerHTML = `
-                                    <div class="comment-header">
-                                        <span>تعليق قديم</span>
-                                    </div>
-                                    <div>${comment}</div>
-                                `;
-                            }
-                            commentsList.appendChild(commentItem);
-                        });
-                    } else {
-                        commentsList.innerHTML = '<p class="no-comments">لا توجد تعليقات حتى الآن</p>';
-                    }
+            const complaintDate = new Date(complaint.created_at).toLocaleDateString('ar-EG');
+            const rating = complaint.rating || 0;
+            let starsHtml = '';
+            for (let i = 1; i <= 5; i++) {
+                starsHtml += `<i class="fas fa-star star ${i <= rating ? 'filled' : ''}"></i>`;
+            }
+
+            const complaintItem = document.createElement('div');
+            complaintItem.className = 'complaint-item';
+            complaintItem.innerHTML = `
+                <div class="complaint-info">
+                    <div><strong>${complaint.name}</strong> - ${complaint.phone}</div>
+                    <div class="complaint-text">${complaint.complaint}</div>
+                    <div class="rating-stars">
+                        ${starsHtml}
+                    </div>
+                    <div class="complaint-meta">
+                        <span>رقم #${complaint.id}</span>
+                        <span>${complaintDate}</span>
+                    </div>
+                </div>
+                <div class="complaint-actions">
+                    <span class="status-badge ${statusClass}">${statusText}</span>
+                    <button class="btn btn-view manage-btn" data-id="${complaint.id}">
+                        <i class="fas fa-cog"></i> إدارة
+                    </button>
+                </div>
+            `;
+            complaintsList.appendChild(complaintItem);
+        });
+
+        document.querySelectorAll('.manage-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const complaintId = btn.getAttribute('data-id');
+                openComplaintModal(complaintId);
+            });
+        });
+    }
+
+    // فتح نموذج معاينة الشكوى
+    async function openComplaintModal(complaintId) {
+        const complaint = complaints.find(c => c.id == complaintId);
+        if (!complaint) return;
+        currentComplaintId = complaintId;
+        currentComplaintStatus = complaint.status;
+        selectedStatus = complaint.status;
+        document.getElementById('modal-id').textContent = complaint.id;
+        document.getElementById('modal-name').textContent = complaint.name;
+        document.getElementById('modal-phone').textContent = complaint.phone;
+        let statusText = 'قيد المعالجة';
+        if (complaint.status === 'resolved') statusText = 'تم الحل';
+        if (complaint.status === 'rejected') statusText = 'مرفوضة';
+        const statusBadge = document.getElementById('modal-status');
+        statusBadge.textContent = statusText;
+        statusBadge.className = `status-badge status-${complaint.status}`;
+        const rating = complaint.rating || 0;
+        const ratingStars = document.getElementById('rating-stars');
+        ratingStars.innerHTML = '';
+        for (let i = 1; i <= 5; i++) {
+            const star = document.createElement('i');
+            star.className = `fas fa-star star ${i <= rating ? 'filled' : ''}`;
+            ratingStars.appendChild(star);
+        }
+        document.getElementById('modal-complaint').textContent = complaint.complaint;
+        const complaintDate = new Date(complaint.created_at).toLocaleDateString('ar-EG');
+        document.getElementById('modal-created-at').textContent = complaintDate;
+        statusButtons.forEach(btn => {
+            btn.classList.remove('active');
+            if (btn.getAttribute('data-status') === complaint.status) {
+                btn.classList.add('active');
+            }
+        });
+        await loadComments();
+        complaintModal.style.display = 'block';
+    }
+
+    // تحميل التعليقات
+    async function loadComments() {
+        if (!currentComplaintId) return;
+        try {
+            const { data, error } = await supabase
+                .from('complaints')
+                .select('admin_comment')
+                .eq('id', currentComplaintId)
+                .single();
+            if (error) {
+                console.error('Error loading comments:', error);
+                commentsList.innerHTML = '<p class="no-comments">حدث خطأ في تحميل التعليقات</p>';
+                return;
+            }
+            commentsList.innerHTML = '';
+            if (data && data.admin_comment) {
+                const comments = data.admin_comment.split('\n').filter(comment => comment.trim() !== '');
+                if (comments.length > 0) {
+                    comments.forEach(comment => {
+                        const commentItem = document.createElement('div');
+                        commentItem.className = 'comment-item';
+                        if (comment.includes(']')) {
+                            const parts = comment.split(']');
+                            const timestamp = parts[0].replace('[', '');
+                            const commentText = parts.slice(1).join(']').trim();
+                            commentItem.innerHTML = `
+                                <div class="comment-header">
+                                    <span>${timestamp}</span>
+                                </div>
+                                <div>${commentText}</div>
+                            `;
+                        } else {
+                            commentItem.innerHTML = `
+                                <div class="comment-header">
+                                    <span>تعليق قديم</span>
+                                </div>
+                                <div>${comment}</div>
+                            `;
+                        }
+                        commentsList.appendChild(commentItem);
+                    });
                 } else {
                     commentsList.innerHTML = '<p class="no-comments">لا توجد تعليقات حتى الآن</p>';
                 }
-            } catch (error) {
-                console.error('Error loading comments:', error);
-                commentsList.innerHTML = '<p class="no-comments">حدث خطأ غير متوقع في تحميل التعليقات</p>';
+            } else {
+                commentsList.innerHTML = '<p class="no-comments">لا توجد تعليقات حتى الآن</p>';
             }
+        } catch (error) {
+            console.error('Error loading comments:', error);
+            commentsList.innerHTML = '<p class="no-comments">حدث خطأ غير متوقع في تحميل التعليقات</p>';
         }
+    }
 
-        // إضافة تعليق جديد
-        async function addComment() {
-            if (!currentComplaintId || !commentInput.value.trim()) {
-                showToast('يرجى كتابة تعليق أولاً', 'error');
+    // إضافة تعليق جديد
+    async function addComment() {
+        if (!currentComplaintId || !commentInput.value.trim()) {
+            showToast('يرجى كتابة تعليق أولاً', 'error');
+            return;
+        }
+        try {
+            const commentText = commentInput.value.trim();
+            addCommentBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الإضافة...';
+            addCommentBtn.disabled = true;
+            const { data: complaintData, error: fetchError } = await supabase
+                .from('complaints')
+                .select('admin_comment')
+                .eq('id', currentComplaintId)
+                .single();
+            if (fetchError) {
+                console.error('Error fetching current comment:', fetchError);
+                showToast('حدث خطأ أثناء جلب التعليق الحالي', 'error');
+                addCommentBtn.innerHTML = '<i class="fas fa-plus"></i> إضافة تعليق';
+                addCommentBtn.disabled = false;
                 return;
             }
-            try {
-                const commentText = commentInput.value.trim();
-                addCommentBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الإضافة...';
-                addCommentBtn.disabled = true;
-                const { data: complaintData, error: fetchError } = await supabase
-                    .from('complaints')
-                    .select('admin_comment')
-                    .eq('id', currentComplaintId)
-                    .single();
-                if (fetchError) {
-                    console.error('Error fetching current comment:', fetchError);
-                    showToast('حدث خطأ أثناء جلب التعليق الحالي', 'error');
-                    addCommentBtn.innerHTML = '<i class="fas fa-plus"></i> إضافة تعليق';
-                    addCommentBtn.disabled = false;
-                    return;
-                }
-                const now = new Date();
-                const dateTime = now.toLocaleString('ar-EG');
-                const newComment = `[${dateTime}] مسؤول النظام: ${commentText}\n${complaintData.admin_comment || ''}`;
-                const { error } = await supabase
-                    .from('complaints')
-                    .update({ 
-                        admin_comment: newComment,
-                        updated_at: new Date().toISOString(),
-                        has_new_response: true
-                    })
-                    .eq('id', currentComplaintId);
-                if (error) {
-                    console.error('Error updating comment:', error);
-                    showToast('حدث خطأ أثناء إضافة التعليق: ' + error.message, 'error');
-                    addCommentBtn.innerHTML = '<i class="fas fa-plus"></i> إضافة تعليق';
-                    addCommentBtn.disabled = false;
-                    return;
-                }
-                showToast('تم إضافة التعليق بنجاح', 'success');
-                commentInput.value = '';
+            const now = new Date();
+            const dateTime = now.toLocaleString('ar-EG');
+            const newComment = `[${dateTime}] مسؤول النظام: ${commentText}\n${complaintData.admin_comment || ''}`;
+            const { error } = await supabase
+                .from('complaints')
+                .update({ 
+                    admin_comment: newComment,
+                    updated_at: new Date().toISOString(),
+                    has_new_response: true
+                })
+                .eq('id', currentComplaintId);
+            if (error) {
+                console.error('Error updating comment:', error);
+                showToast('حدث خطأ أثناء إضافة التعليق: ' + error.message, 'error');
                 addCommentBtn.innerHTML = '<i class="fas fa-plus"></i> إضافة تعليق';
                 addCommentBtn.disabled = false;
-                await loadComments();
-            } catch (error) {
-                console.error('Error adding comment:', error);
-                showToast('حدث خطأ غير متوقع أثناء إضافة التعليق', 'error');
-                addCommentBtn.innerHTML = '<i class="fas fa-plus"></i> إضافة تعليق';
-                addCommentBtn.disabled = false;
+                return;
             }
+            showToast('تم إضافة التعليق بنجاح', 'success');
+            commentInput.value = '';
+            addCommentBtn.innerHTML = '<i class="fas fa-plus"></i> إضافة تعليق';
+            addCommentBtn.disabled = false;
+            await loadComments();
+        } catch (error) {
+            console.error('Error adding comment:', error);
+            showToast('حدث خطأ غير متوقع أثناء إضافة التعليق', 'error');
+            addCommentBtn.innerHTML = '<i class="fas fa-plus"></i> إضافة تعليق';
+            addCommentBtn.disabled = false;
         }
+    }
 
-        // تحديث حالة الشكوى
-        async function updateComplaintStatus() {
-            if (!currentComplaintId || !selectedStatus) return;
-            try {
-                const { error } = await supabase
-                    .from('complaints')
-                    .update({ status: selectedStatus })
-                    .eq('id', currentComplaintId);
-                if (error) {
-                    console.error('Error updating complaint status:', error);
-                    showToast('حدث خطأ أثناء تحديث حالة الشكوى', 'error');
-                    return;
-                }
-                showToast('تم تحديث حالة الشكوى بنجاح', 'success');
-                complaintModal.style.display = 'none';
-                loadComplaints();
-            } catch (error) {
+    // تحديث حالة الشكوى
+    async function updateComplaintStatus() {
+        if (!currentComplaintId || !selectedStatus) return;
+        try {
+            const { error } = await supabase
+                .from('complaints')
+                .update({ status: selectedStatus })
+                .eq('id', currentComplaintId);
+            if (error) {
                 console.error('Error updating complaint status:', error);
                 showToast('حدث خطأ أثناء تحديث حالة الشكوى', 'error');
+                return;
             }
+            showToast('تم تحديث حالة الشكوى بنجاح', 'success');
+            complaintModal.style.display = 'none';
+            loadComplaints();
+        } catch (error) {
+            console.error('Error updating complaint status:', error);
+            showToast('حدث خطأ أثناء تحديث حالة الشكوى', 'error');
         }
+    }
 
-        // عرض إشعار شكوى جديدة
-        function showNewComplaintNotification(complaint) {
-            const toast = document.createElement('div');
-            toast.className = 'toast new-complaint';
-            const complaintDate = new Date(complaint.created_at).toLocaleDateString('ar-EG');
-            toast.innerHTML = `
-                <div style="display: flex; align-items: center; width: 100%;">
-                    <i class="toast-icon fas fa-bell"></i>
-                    <strong>تم إضافة شكوى جديدة</strong>
-                </div>
-                <div class="new-complaint-details">
-                    <div><span class="label">الاسم:</span> ${complaint.name}</div>
-                    <div><span class="label">الهاتف:</span> ${complaint.phone}</div>
-                    <div><span class="label">التاريخ:</span> ${complaintDate}</div>
-                    <div><span class="label">الشكوى:</span> ${complaint.complaint.substring(0, 50)}${complaint.complaint.length > 50 ? '...' : ''}</div>
-                </div>
-            `;
-            toastContainer.appendChild(toast);
-            setTimeout(() => {
-                if (toast.parentNode) {
-                    toast.parentNode.removeChild(toast);
-                }
-            }, 5000);
-        }
+    // عرض إشعار شكوى جديدة
+    function showNewComplaintNotification(complaint) {
+        const toast = document.createElement('div');
+        toast.className = 'toast new-complaint';
+        const complaintDate = new Date(complaint.created_at).toLocaleDateString('ar-EG');
+        toast.innerHTML = `
+            <div style="display: flex; align-items: center; width: 100%;">
+                <i class="toast-icon fas fa-bell"></i>
+                <strong>تم إضافة شكوى جديدة</strong>
+            </div>
+            <div class="new-complaint-details">
+                <div><span class="label">الاسم:</span> ${complaint.name}</div>
+                <div><span class="label">الهاتف:</span> ${complaint.phone}</div>
+                <div><span class="label">التاريخ:</span> ${complaintDate}</div>
+                <div><span class="label">الشكوى:</span> ${complaint.complaint.substring(0, 50)}${complaint.complaint.length > 50 ? '...' : ''}</div>
+            </div>
+        `;
+        toastContainer.appendChild(toast);
+        setTimeout(() => {
+            if (toast.parentNode) {
+                toast.parentNode.removeChild(toast);
+            }
+        }, 5000);
+    }
 
-        // عرض الإشعارات العادية
-        function showToast(message, type = 'info') {
-            const toast = document.createElement('div');
-            toast.className = `toast ${type}`;
-            let icon = 'fa-info-circle';
-            if (type === 'success') icon = 'fa-check-circle';
-            if (type === 'error') icon = 'fa-exclamation-circle';
-            toast.innerHTML = `<i class="toast-icon fas ${icon}"></i>${message}`;
-            toastContainer.appendChild(toast);
-            setTimeout(() => {
-                if (toast.parentNode) {
-                    toast.parentNode.removeChild(toast);
-                }
-            }, 5000);
-        }
+    // عرض الإشعارات العادية
+    function showToast(message, type = 'info') {
+        const toast = document.createElement('div');
+        toast.className = `toast ${type}`;
+        let icon = 'fa-info-circle';
+        if (type === 'success') icon = 'fa-check-circle';
+        if (type === 'error') icon = 'fa-exclamation-circle';
+        toast.innerHTML = `<i class="toast-icon fas ${icon}"></i>${message}`;
+        toastContainer.appendChild(toast);
+        setTimeout(() => {
+            if (toast.parentNode) {
+                toast.parentNode.removeChild(toast);
+            }
+        }, 5000);
+    }
 
-        // إعداد PWA
-        function setupPWA() {
-            window.addEventListener('beforeinstallprompt', (e) => {
-                e.preventDefault();
-                deferredPrompt = e;
-                installButton.style.display = 'flex';
-            });
-            installButton.addEventListener('click', async () => {
-                if (!deferredPrompt) return;
-                deferredPrompt.prompt();
-                const { outcome } = await deferredPrompt.userChoice;
-                if (outcome === 'accepted') {
-                    installButton.style.display = 'none';
-                    showToast('تم بدء تثبيت التطبيق', 'success');
-                }
-                deferredPrompt = null;
-            });
-            window.addEventListener('appinstalled', () => {
+    // إعداد PWA
+    function setupPWA() {
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            installButton.style.display = 'flex';
+        });
+        installButton.addEventListener('click', async () => {
+            if (!deferredPrompt) return;
+            deferredPrompt.prompt();
+            const { outcome } = await deferredPrompt.userChoice;
+            if (outcome === 'accepted') {
                 installButton.style.display = 'none';
-                deferredPrompt = null;
-                showToast('تم تثبيت التطبيق بنجاح', 'success');
-            });
-            if (window.matchMedia('(display-mode: standalone)').matches) {
-                installButton.style.display = 'none';
+                showToast('تم بدء تثبيت التطبيق', 'success');
             }
+            deferredPrompt = null;
+        });
+        window.addEventListener('appinstalled', () => {
+            installButton.style.display = 'none';
+            deferredPrompt = null;
+            showToast('تم تثبيت التطبيق بنجاح', 'success');
+        });
+        if (window.matchMedia('(display-mode: standalone)').matches) {
+            installButton.style.display = 'none';
         }
+    }
 
-        // تسجيل Service Worker
-        function registerServiceWorker() {
-            if ('serviceWorker' in navigator) {
-                navigator.serviceWorker.register('/service-worker.js')
-                    .then((registration) => {
-                        console.log('Service Worker registered with scope:', registration.scope);
-                    })
-                    .catch((error) => {
-                        console.error('Service Worker registration failed:', error);
-                    });
-            }
-        }
-
-        // متغير خارجي
-        let deferredPrompt = null;
-
-        // تهيئة التطبيق
-        async function initApp() {
-            await loadComplaints();
-            startRealtimeListener();
-            registerServiceWorker();
-            setupPWA();
-
-            statusFilter.addEventListener('change', loadComplaints);
-            searchInput.addEventListener('input', loadComplaints);
-            closeModalBtn.addEventListener('click', () => complaintModal.style.display = 'none');
-            closeModalBtn2.addEventListener('click', () => complaintModal.style.display = 'none');
-            window.addEventListener('click', (event) => {
-                if (event.target === complaintModal) complaintModal.style.display = 'none';
-            });
-
-            statusButtons.forEach(btn => {
-                btn.addEventListener('click', () => {
-                    statusButtons.forEach(b => b.classList.remove('active'));
-                    btn.classList.add('active');
-                    selectedStatus = btn.getAttribute('data-status');
+    // تسجيل Service Worker
+    function registerServiceWorker() {
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/service-worker.js')
+                .then((registration) => {
+                    console.log('Service Worker registered with scope:', registration.scope);
+                })
+                .catch((error) => {
+                    console.error('Service Worker registration failed:', error);
                 });
-            });
-
-            saveStatusBtn.addEventListener('click', updateComplaintStatus);
-            addCommentBtn.addEventListener('click', addComment);
-            commentInput.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    addComment();
-                }
-            });
         }
+    }
 
-        document.addEventListener('DOMContentLoaded', initApp);
-    </script>
+    // متغير خارجي
+    let deferredPrompt = null;
+
+    // اختبار الـ Function يدوياً
+    function testNotifyFunction() {
+        console.log('🧪 اختبار الـ Function...');
+        fetch('/api/notify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                complaint: {
+                    name: "اختبار يدوي",
+                    phone: "0555555555",
+                    complaint: "هذا اختبار يدوي لنظام الاشعارات",
+                    created_at: new Date().toISOString()
+                }
+            })
+        })
+        .then(r => {
+            console.log('📩 حالة الاستجابة:', r.status);
+            return r.json();
+        })
+        .then(data => {
+            console.log('✅ نتيجة الاختبار:', data);
+            showToast('تم اختبار الإشعار بنجاح', 'success');
+        })
+        .catch(err => {
+            console.error('❌ فشل الاختبار:', err);
+            showToast('فشل اختبار الإشعار', 'error');
+        });
+    }
+
+    // تهيئة التطبيق
+    async function initApp() {
+        console.log('🚀 بدء تهيئة التطبيق...');
+        
+        await loadComplaints();
+        
+        // اختبار الـ Function عند التحميل
+        setTimeout(testNotifyFunction, 2000);
+        
+        startRealtimeListener();
+        registerServiceWorker();
+        setupPWA();
+
+        statusFilter.addEventListener('change', loadComplaints);
+        searchInput.addEventListener('input', loadComplaints);
+        closeModalBtn.addEventListener('click', () => complaintModal.style.display = 'none');
+        closeModalBtn2.addEventListener('click', () => complaintModal.style.display = 'none');
+        window.addEventListener('click', (event) => {
+            if (event.target === complaintModal) complaintModal.style.display = 'none';
+        });
+
+        statusButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                statusButtons.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                selectedStatus = btn.getAttribute('data-status');
+            });
+        });
+
+        saveStatusBtn.addEventListener('click', updateComplaintStatus);
+        addCommentBtn.addEventListener('click', addComment);
+        commentInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                addComment();
+            }
+        });
+
+        // إضافة زر اختبار يدوي (للتطوير فقط)
+        const testButton = document.createElement('button');
+        testButton.textContent = '🧪 اختبار الإشعارات';
+        testButton.style.cssText = 'position:fixed; bottom:10px; left:10px; z-index:1000; padding:10px; background:#f59e0b; color:white; border:none; border-radius:5px; cursor:pointer;';
+        testButton.onclick = testNotifyFunction;
+        document.body.appendChild(testButton);
+    }
+
+    document.addEventListener('DOMContentLoaded', initApp);
+</script>
 </body>
 </html>
