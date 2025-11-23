@@ -31,7 +31,6 @@
         });
     </script>
     <style>
-        /* نفس CSS الموجود — لا حاجة لتغييره */
         :root {
             --primary: #0ea5e9;
             --primary-dark: #0284c7;
@@ -75,6 +74,7 @@
             margin: 0 auto;
             padding: 20px;
         }
+        /* Header Styles */
         header {
             background: linear-gradient(135deg, var(--primary), var(--secondary));
             color: white;
@@ -148,6 +148,7 @@
             transform: translateY(-2px);
             box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
         }
+        /* Stats Section */
         .stats-container {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -195,6 +196,7 @@
             margin: 0.5rem 0;
             text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
         }
+        /* Main Card */
         .card {
             background: var(--card-bg);
             border-radius: 20px;
@@ -222,6 +224,7 @@
             -webkit-text-fill-color: transparent;
             font-size: 1.8rem;
         }
+        /* Filters */
         .filters {
             display: flex;
             gap: 1.5rem;
@@ -273,6 +276,7 @@
             color: var(--text);
             padding: 12px;
         }
+        /* Complaints List */
         .complaints-list {
             margin-top: 1.5rem;
         }
@@ -338,6 +342,7 @@
             padding-top: 1rem;
             border-top: 1px solid var(--border);
         }
+        /* Status Badges */
         .status-badge {
             padding: 0.5rem 1rem;
             border-radius: 50px;
@@ -361,6 +366,7 @@
             color: #721c24;
             box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
         }
+        /* Rating Stars */
         .rating-stars {
             display: flex;
             margin: 0.5rem 0;
@@ -375,6 +381,7 @@
             color: var(--warning);
             text-shadow: 0 2px 4px rgba(245, 158, 11, 0.3);
         }
+        /* Buttons */
         .btn {
             padding: 0.75rem 1.5rem;
             border: none;
@@ -408,6 +415,7 @@
             box-shadow: 0 6px 20px rgba(245, 158, 11, 0.4);
             background: linear-gradient(135deg, var(--warning-dark), var(--warning));
         }
+        /* Modal Styles */
         .modal {
             display: none;
             position: fixed;
@@ -466,6 +474,7 @@
             background: var(--danger-dark);
             transform: scale(1.1);
         }
+        /* Toast Notifications */
         .toast-container {
             position: fixed;
             top: 20px;
@@ -527,6 +536,7 @@
             from { transform: translateX(0); opacity: 1; }
             to { transform: translateX(100%); opacity: 0; }
         }
+        /* Empty State */
         .empty-state {
             text-align: center;
             padding: 3rem 2rem;
@@ -547,6 +557,7 @@
             font-size: 1rem;
             color: var(--light);
         }
+        /* Status Selector */
         .status-selector {
             display: flex;
             gap: 1rem;
@@ -585,12 +596,14 @@
             background: linear-gradient(135deg, #f8d7da, #ffcdd2);
             color: #721c24;
         }
+        /* Modal Actions */
         .modal-actions {
             display: flex;
             justify-content: space-between;
             margin-top: 2rem;
             gap: 1rem;
         }
+        /* Comments Section */
         .comments-section {
             margin-top: 2rem;
             padding-top: 2rem;
@@ -670,6 +683,7 @@
             font-style: italic;
             font-size: 0.9rem;
         }
+        /* Detail Rows */
         .detail-row {
             display: flex;
             flex-direction: column;
@@ -690,6 +704,7 @@
             font-size: 1rem;
             color: var(--text);
         }
+        /* Scrollbar */
         ::-webkit-scrollbar {
             width: 8px;
         }
@@ -704,6 +719,7 @@
         ::-webkit-scrollbar-thumb:hover {
             background: linear-gradient(135deg, var(--primary-dark), var(--secondary-dark));
         }
+        /* Responsive Design */
         @media (max-width: 768px) {
             .container {
                 padding: 15px;
@@ -958,13 +974,14 @@
             </div>
         </div>
     </div>
+    <!-- حاوية الإشعارات -->
     <div id="toast-container" class="toast-container"></div>
+    <!-- JavaScript -->
     <script>
         // تهيئة Supabase
         const supabaseUrl = 'https://xqccuvhtrxhsrzqgktdj.supabase.co';
         const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhxY2N1dmh0cnhoc3J6cWdrdGRqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU0MzI5MDMsImV4cCI6MjA3MTAwODkwM30.wDVE-gsAUgjmv82pYKoMMMeF3YRAgFVWg854G5YLpyE';
         const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
-
         // عناصر DOM
         const complaintsList = document.getElementById('complaints-list');
         const complaintModal = document.getElementById('complaint-modal');
@@ -979,19 +996,19 @@
         const addCommentBtn = document.getElementById('add-comment-btn');
         const commentsList = document.getElementById('comments-list');
         const installButton = document.getElementById('installButton');
-
+        // إحصائيات
         const totalComplaints = document.getElementById('total-complaints');
         const pendingComplaints = document.getElementById('pending-complaints');
         const resolvedComplaints = document.getElementById('resolved-complaints');
         const rejectedComplaints = document.getElementById('rejected-complaints');
-
+        // متغيرات التطبيق
         let complaints = [];
         let currentComplaintId = null;
         let currentComplaintStatus = null;
         let selectedStatus = null;
         let lastComplaintIds = new Set();
 
-        // ✅ Realtime listener — بدون إرسال إشعار من الواجهة
+        // ✅ Realtime listener — يُرسل إشعار عبر Edge Function في Supabase
         function startRealtimeListener() {
             console.log('🚀 بدء الاستماع للتحديثات المباشرة...');
             const channel = supabase
@@ -1000,10 +1017,30 @@
                     event: 'INSERT',
                     schema: 'public',
                     table: 'complaints'
-                }, (payload) => {
+                }, async (payload) => {
                     console.log('✅ شكوى جديدة عبر Realtime:', payload.new);
                     const newComplaint = payload.new;
-                    showNewComplaintNotification(newComplaint); // فقط إشعار داخلي
+                    // إشعار داخلي
+                    showNewComplaintNotification(newComplaint);
+                    // ✅ إرسال إشعار OneSignal عبر Edge Function
+                    try {
+                        console.log('📨 إرسال إشعار OneSignal عبر Edge Function...');
+                        const response = await fetch('https://xqccuvhtrxhsrzqgktdj.supabase.co/functions/v1/onesignal-notify', {
+                            method: 'POST',
+                            headers: { 
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({ complaint: newComplaint })
+                        });
+                        if (!response.ok) {
+                            const errorText = await response.text();
+                            console.error('❌ فشل إرسال إشعار OneSignal:', response.status, errorText);
+                        } else {
+                            console.log('✅ إشعار OneSignal تم إرساله بنجاح');
+                        }
+                    } catch (error) {
+                        console.error('💥 خطأ في إرسال الإشعار:', error);
+                    }
                 })
                 .subscribe((status) => {
                     console.log('📡 حالة الاشتراك Realtime:', status);
@@ -1011,10 +1048,7 @@
             return channel;
         }
 
-        // بقية الدوال: loadComplaints, renderComplaints, updateStats, openComplaintModal, loadComments, 
-        // addComment, updateComplaintStatus, showToast, showNewComplaintNotification,
-        // setupPWA, registerServiceWorker, initApp — تبقى كما هي بدون تغيير.
-
+        // تحميل الشكاوى من Supabase
         async function loadComplaints() {
             try {
                 let query = supabase
@@ -1045,6 +1079,7 @@
             }
         }
 
+        // التحقق من وجود شكاوى جديدة
         function checkForNewComplaints() {
             const currentIds = new Set(complaints.map(c => c.id));
             if (lastComplaintIds.size === 0) {
@@ -1060,6 +1095,7 @@
             lastComplaintIds = currentIds;
         }
 
+        // تحديث الإحصائيات
         function updateStats() {
             totalComplaints.textContent = complaints.length;
             pendingComplaints.textContent = complaints.filter(c => c.status === 'pending').length;
@@ -1067,6 +1103,7 @@
             rejectedComplaints.textContent = complaints.filter(c => c.status === 'rejected').length;
         }
 
+        // عرض الشكاوى في القائمة
         function renderComplaints() {
             if (complaints.length === 0) {
                 complaintsList.innerHTML = `
@@ -1121,6 +1158,7 @@
             });
         }
 
+        // فتح نموذج معاينة الشكوى
         async function openComplaintModal(complaintId) {
             const complaint = complaints.find(c => c.id == complaintId);
             if (!complaint) return;
@@ -1157,6 +1195,7 @@
             complaintModal.style.display = 'block';
         }
 
+        // تحميل التعليقات
         async function loadComments() {
             if (!currentComplaintId) return;
             try {
@@ -1209,6 +1248,7 @@
             }
         }
 
+        // إضافة تعليق جديد
         async function addComment() {
             if (!currentComplaintId || !commentInput.value.trim()) {
                 showToast('يرجى كتابة تعليق أولاً', 'error');
@@ -1261,6 +1301,7 @@
             }
         }
 
+        // تحديث حالة الشكوى
         async function updateComplaintStatus() {
             if (!currentComplaintId || !selectedStatus) return;
             try {
@@ -1282,6 +1323,7 @@
             }
         }
 
+        // عرض إشعار شكوى جديدة
         function showNewComplaintNotification(complaint) {
             const toast = document.createElement('div');
             toast.className = 'toast new-complaint';
@@ -1306,6 +1348,7 @@
             }, 5000);
         }
 
+        // عرض الإشعارات العادية
         function showToast(message, type = 'info') {
             const toast = document.createElement('div');
             toast.className = `toast ${type}`;
@@ -1321,8 +1364,8 @@
             }, 5000);
         }
 
+        // إعداد PWA
         function setupPWA() {
-            let deferredPrompt = null;
             window.addEventListener('beforeinstallprompt', (e) => {
                 e.preventDefault();
                 deferredPrompt = e;
@@ -1348,6 +1391,7 @@
             }
         }
 
+        // تسجيل Service Worker
         function registerServiceWorker() {
             if ('serviceWorker' in navigator) {
                 navigator.serviceWorker.register('/service-worker.js')
@@ -1360,6 +1404,10 @@
             }
         }
 
+        // متغير خارجي
+        let deferredPrompt = null;
+
+        // تهيئة التطبيق
         async function initApp() {
             console.log('🚀 بدء تهيئة التطبيق...');
             await loadComplaints();
