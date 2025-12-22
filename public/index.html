@@ -13,20 +13,25 @@
     <!-- Manifest -->
     <link rel="manifest" href="/manifest.json">
     <!-- Meta tags for iOS -->
-    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="إدارة الشكاوى">
     <link rel="apple-touch-icon" href="image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTkyIiBoZWlnaHQ9IjE5MiIgdmlld0JveD0iMCAwIDE5MiAxOTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjE5MiIgaGVpZ2h0PSIxOTIiIHJ4PSI0MCIgZmlsbD0iIzBlYTVlOSIvPjxwYXRoIGQ9Ik05NiA1NkM5NiA1NiAxMDggNDAgMTM2IDQwQzE2NCA0MCAxNzYgNTYgMTc2IDU2QzE3NiA1NiAxODQgNzIgMTg0IDkyQzE4NCAxMTIgMTY0IDEzNiAxMzYgMTM2QzEwOCAxMzYgOTYgMTIwIDk2IDEyMEM5NiAxMjAgODQgMTM2IDU2IDEzNkMyOCAxMzYgOCAxMTIgOCA5MkM4IDcyIDE2IDU2IDE2IDU2QzE2IDU2IDI4IDQwIDU2IDQwQzg0IDQwIDk2IDU2IDk2IDU2WiIgZmlsbD0id2hpdGUiLz48cGF0aCBkPSJNNjQgODhDNzIuODM2NiA4OCA4MCA4MC44MzY2IDgwIDcyQzgwIDYzLjE2MzQgNzIuODM2NiA1NiA2NCA1NkM1NS4xNjM0IDU2IDQ4IDYzLjE2MzQgNDggNzJDNDggODAuODM2NiA1NS4xNjM0IDg4IDY0IDg4WiIgZmlsbD0id2hpdGUiLz48cGF0aCBkPSJNMTI4IDcyQzEyOCA4MC44MzY2IDEyMC44MzcgODggMTEyIDg4QzEwMy4xNjMgODggOTYgODAuODM2NiA5NiA3MkM5NiA2My4xNjM0IDEwMy4xNjMgNTYgMTEyIDU2QzEyMC44MzcgNTYgMTI4IDYzLjE2MzQgMTI4IDcyWiIgZmlsbD0id2hpdGUiLz48L3N2Zz4=">
     <!-- ✅ OneSignal SDK -->
     <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
     <script>
+        // OneSignal مع معالجة الأخطاء
         window.OneSignalDeferred = window.OneSignalDeferred || [];
         OneSignalDeferred.push(async function(OneSignal) {
-            await OneSignal.init({
-                appId: "fb14d9b6-5b07-47c7-bc70-ff2495372d38",
-            });
-            if (!OneSignal.User.pushSubscription.id) {
-                OneSignal.User.pushSubscription.optIn().catch(console.warn);
+            try {
+                await OneSignal.init({
+                    appId: "fb14d9b6-5b07-47c7-bc70-ff2495372d38",
+                });
+                if (OneSignal.User && !OneSignal.User.pushSubscription.id) {
+                    OneSignal.User.pushSubscription.optIn().catch(console.warn);
+                }
+            } catch (error) {
+                console.warn('OneSignal failed to load:', error);
             }
         });
     </script>
@@ -978,10 +983,10 @@
     <div id="toast-container" class="toast-container"></div>
     <!-- JavaScript -->
     <script>
-        // تهيئة Supabase
+        // تهيئة Supabase (تم تحميله من CDN بالفعل)
         const supabaseUrl = 'https://xqccuvhtrxhsrzqgktdj.supabase.co';
         const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhxY2N1dmh0cnhoc3J6cWdrdGRqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU0MzI5MDMsImV4cCI6MjA3MTAwODkwM30.wDVE-gsAUgjmv82pYKoMMMeF3YRAgFVWg854G5YLpyE';
-        const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+        
         // عناصر DOM
         const complaintsList = document.getElementById('complaints-list');
         const complaintModal = document.getElementById('complaint-modal');
@@ -996,17 +1001,20 @@
         const addCommentBtn = document.getElementById('add-comment-btn');
         const commentsList = document.getElementById('comments-list');
         const installButton = document.getElementById('installButton');
+        
         // إحصائيات
         const totalComplaints = document.getElementById('total-complaints');
         const pendingComplaints = document.getElementById('pending-complaints');
         const resolvedComplaints = document.getElementById('resolved-complaints');
         const rejectedComplaints = document.getElementById('rejected-complaints');
+        
         // متغيرات التطبيق
         let complaints = [];
         let currentComplaintId = null;
         let currentComplaintStatus = null;
         let selectedStatus = null;
         let lastComplaintIds = new Set();
+        let deferredPrompt = null;
 
         // ✅ Realtime listener — يُرسل إشعار عبر Edge Function في Supabase
         function startRealtimeListener() {
@@ -1404,9 +1412,6 @@
             }
         }
 
-        // متغير خارجي
-        let deferredPrompt = null;
-
         // تهيئة التطبيق
         async function initApp() {
             console.log('🚀 بدء تهيئة التطبيق...');
@@ -1414,13 +1419,17 @@
             startRealtimeListener();
             registerServiceWorker();
             setupPWA();
+            
+            // إضافة مستمعي الأحداث
             statusFilter.addEventListener('change', loadComplaints);
             searchInput.addEventListener('input', loadComplaints);
             closeModalBtn.addEventListener('click', () => complaintModal.style.display = 'none');
             closeModalBtn2.addEventListener('click', () => complaintModal.style.display = 'none');
+            
             window.addEventListener('click', (event) => {
                 if (event.target === complaintModal) complaintModal.style.display = 'none';
             });
+            
             statusButtons.forEach(btn => {
                 btn.addEventListener('click', () => {
                     statusButtons.forEach(b => b.classList.remove('active'));
@@ -1428,8 +1437,10 @@
                     selectedStatus = btn.getAttribute('data-status');
                 });
             });
+            
             saveStatusBtn.addEventListener('click', updateComplaintStatus);
             addCommentBtn.addEventListener('click', addComment);
+            
             commentInput.addEventListener('keypress', (e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
