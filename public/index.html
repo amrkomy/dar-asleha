@@ -958,11 +958,11 @@
     <!-- حاوية الإشعارات -->
     <div id="toast-container" class="toast-container"></div>
     
-    <script>
+   <script>
         // ===================== تهيئة التطبيق =====================
         
-        // 1. تهيئة Supabase بشكل صحيح - تعريف متغير واحد فقط
-        let supabase;
+        // 1. تهيئة Supabase بشكل صحيح - استخدم المتغير الموجود بالفعل
+        // ❌ لا تعيد تعريف supabase - تم تعريفه بالفعل من خلال السكريبت الخارجي
         
         // 2. عناصر DOM
         const complaintsList = document.getElementById('complaints-list');
@@ -996,36 +996,16 @@
         
         // ===================== وظائف Supabase =====================
         
-        // تهيئة Supabase
-        function initializeSupabase() {
-            try {
-                const SUPABASE_URL = 'https://xqccuvhtrxhsrzqgktdj.supabase.co';
-                const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhxY2N1dmh0cnhoc3J6cWdrdGRqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU0MzI5MDMsImV4cCI6MjA3MTAwODkwM30.wDVE-gsAUgjmv82pYKoMMMeF3YRAgFVWg854G5YLpyE';
-                
-                // إنشاء عميل Supabase مرة واحدة فقط
-                if (window.supabase && window.supabase.createClient) {
-                    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-                    console.log('✅ Supabase تم تهيئته بنجاح');
-                    return true;
-                } else {
-                    console.error('❌ مكتبة Supabase لم يتم تحميلها');
-                    return false;
-                }
-            } catch (error) {
-                console.error('❌ فشل في تهيئة Supabase:', error);
-                return false;
-            }
-        }
-        
         // تحميل الشكاوى من Supabase
         async function loadComplaints() {
             try {
                 // التحقق من أن supabase مهيأ
-                if (!supabase || typeof supabase.from !== 'function') {
+                if (!window.supabase || typeof window.supabase.from !== 'function') {
                     throw new Error('Supabase غير مهيأ بشكل صحيح');
                 }
                 
-                let query = supabase
+                // استخدام supabase من النافذة (window)
+                let query = window.supabase
                     .from('complaints')
                     .select('*')
                     .order('created_at', { ascending: false });
@@ -1064,7 +1044,7 @@
             if (!currentComplaintId || !selectedStatus) return;
             
             try {
-                const { error } = await supabase
+                const { error } = await window.supabase
                     .from('complaints')
                     .update({ 
                         status: selectedStatus,
@@ -1100,7 +1080,7 @@
                 addCommentBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الإضافة...';
                 addCommentBtn.disabled = true;
                 
-                const { data: complaintData, error: fetchError } = await supabase
+                const { data: complaintData, error: fetchError } = await window.supabase
                     .from('complaints')
                     .select('admin_comment')
                     .eq('id', currentComplaintId)
@@ -1118,7 +1098,7 @@
                 const dateTime = now.toLocaleString('ar-EG');
                 const newComment = `[${dateTime}] مسؤول النظام: ${commentText}\n${complaintData.admin_comment || ''}`;
                 
-                const { error } = await supabase
+                const { error } = await window.supabase
                     .from('complaints')
                     .update({ 
                         admin_comment: newComment,
@@ -1154,7 +1134,7 @@
             if (!currentComplaintId) return;
             
             try {
-                const { data, error } = await supabase
+                const { data, error } = await window.supabase
                     .from('complaints')
                     .select('admin_comment')
                     .eq('id', currentComplaintId)
@@ -1211,7 +1191,7 @@
         // ===================== Realtime Listener =====================
         
         function startRealtimeListener() {
-            if (!supabase || typeof supabase.channel !== 'function') {
+            if (!window.supabase || typeof window.supabase.channel !== 'function') {
                 console.warn('Supabase realtime غير متاح');
                 return;
             }
@@ -1219,7 +1199,7 @@
             try {
                 console.log('🚀 بدء الاستماع للتحديثات المباشرة...');
                 
-                realtimeChannel = supabase
+                realtimeChannel = window.supabase
                     .channel('complaints-realtime')
                     .on('postgres_changes', {
                         event: 'INSERT',
@@ -1266,8 +1246,8 @@
         }
         
         function stopRealtimeListener() {
-            if (realtimeChannel && supabase) {
-                supabase.removeChannel(realtimeChannel);
+            if (realtimeChannel && window.supabase) {
+                window.supabase.removeChannel(realtimeChannel);
                 console.log('⏹️ تم إيقاف Realtime listener');
             }
         }
@@ -1559,59 +1539,20 @@
             });
         }
         
-        // ===================== تهيئة OneSignal =====================
-        
-        function initializeOneSignal() {
-            // إنشاء سكريبت OneSignal ديناميكياً
-            const oneSignalScript = document.createElement('script');
-            oneSignalScript.src = 'https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js';
-            oneSignalScript.defer = true;
-            
-            oneSignalScript.onload = function() {
-                console.log('✅ OneSignal SDK تم تحميله');
-                
-                if (window.OneSignalDeferred) {
-                    window.OneSignalDeferred = window.OneSignalDeferred || [];
-                    
-                    OneSignalDeferred.push(async function(OneSignal) {
-                        try {
-                            await OneSignal.init({
-                                appId: "fb14d9b6-5b07-47c7-bc70-ff2495372d38",
-                                allowLocalhostAsSecureOrigin: true,
-                                notifyButton: {
-                                    enable: false
-                                }
-                            });
-                            
-                            console.log('✅ OneSignal مهيأ بنجاح');
-                            
-                            if (OneSignal.User && !OneSignal.User.pushSubscription.id) {
-                                OneSignal.User.pushSubscription.optIn().catch(console.warn);
-                            }
-                            
-                        } catch (error) {
-                            console.warn('OneSignal فشل في التهيئة:', error);
-                        }
-                    });
-                }
-            };
-            
-            oneSignalScript.onerror = function() {
-                console.warn('❌ OneSignal SDK لم يتم تحميله (محجوب)');
-            };
-            
-            document.head.appendChild(oneSignalScript);
-        }
-        
         // ===================== تهيئة التطبيق الرئيسية =====================
         
         async function initApp() {
             console.log('🚀 بدء تهيئة التطبيق...');
             
             try {
-                // 1. تهيئة Supabase
-                if (!initializeSupabase()) {
-                    throw new Error('فشل في تهيئة قاعدة البيانات');
+                // 1. التحقق من Supabase
+                if (!window.supabase || typeof window.supabase.from !== 'function') {
+                    // محاولة تهيئة Supabase يدوياً إذا لم يكن موجوداً
+                    const SUPABASE_URL = 'https://xqccuvhtrxhsrzqgktdj.supabase.co';
+                    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhxY2N1dmh0cnhoc3J6cWdrdGRqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU0MzI5MDMsImV4cCI6MjA3MTAwODkwM30.wDVE-gsAUgjmv82pYKoMMMeF3YRAgFVWg854G5YLpyE';
+                    
+                    window.supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+                    console.log('✅ Supabase تم تهيئته يدوياً');
                 }
                 
                 // 2. إعداد مستمعي الأحداث
@@ -1623,15 +1564,10 @@
                 // 4. بدء Realtime listener
                 startRealtimeListener();
                 
-                // 5. تهيئة OneSignal
-                setTimeout(() => {
-                    initializeOneSignal();
-                }, 1000);
-                
-                // 6. تسجيل Service Worker
+                // 5. تسجيل Service Worker
                 registerServiceWorker();
                 
-                // 7. إعداد PWA
+                // 6. إعداد PWA
                 setupPWA();
                 
                 console.log('✅ التطبيق مهيأ بالكامل وجاهز للاستخدام');
