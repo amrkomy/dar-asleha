@@ -821,6 +821,9 @@
             <button id="installButton" class="install-btn" style="display: none;">
                 <i class="fas fa-download"></i> تثبيت التطبيق
             </button>
+            <button id="refreshButton" class="install-btn" style="background: linear-gradient(135deg, #8b5cf6, #7c3aed);">
+                <i class="fas fa-sync-alt"></i> تحديث البيانات
+            </button>
             <div class="admin-info">
                 <div class="admin-avatar">AD</div>
                 <span>مسؤول النظام</span>
@@ -865,9 +868,9 @@
             </div>
             <div id="complaints-list" class="complaints-list">
                 <div class="empty-state">
-                    <i class="fas fa-inbox"></i>
-                    <h3>لا توجد شكاوى لعرضها</h3>
-                    <p>سيتم عرض الشكاوى هنا عند توفرها</p>
+                    <i class="fas fa-spinner fa-spin"></i>
+                    <h3>جاري تحميل الشكاوى...</h3>
+                    <p>يرجى الانتظار</p>
                 </div>
             </div>
         </div>
@@ -958,13 +961,10 @@
     <!-- حاوية الإشعارات -->
     <div id="toast-container" class="toast-container"></div>
     
-   <script>
+    <script>
         // ===================== تهيئة التطبيق =====================
         
-        // 1. تهيئة Supabase بشكل صحيح - استخدم المتغير الموجود بالفعل
-        // ❌ لا تعيد تعريف supabase - تم تعريفه بالفعل من خلال السكريبت الخارجي
-        
-        // 2. عناصر DOM
+        // 1. عناصر DOM
         const complaintsList = document.getElementById('complaints-list');
         const complaintModal = document.getElementById('complaint-modal');
         const closeModalBtn = document.querySelector('.close-modal');
@@ -978,14 +978,15 @@
         const addCommentBtn = document.getElementById('add-comment-btn');
         const commentsList = document.getElementById('comments-list');
         const installButton = document.getElementById('installButton');
+        const refreshButton = document.getElementById('refreshButton');
         
-        // 3. إحصائيات
+        // 2. إحصائيات
         const totalComplaints = document.getElementById('total-complaints');
         const pendingComplaints = document.getElementById('pending-complaints');
         const resolvedComplaints = document.getElementById('resolved-complaints');
         const rejectedComplaints = document.getElementById('rejected-complaints');
         
-        // 4. متغيرات التطبيق
+        // 3. متغيرات التطبيق
         let complaints = [];
         let currentComplaintId = null;
         let currentComplaintStatus = null;
@@ -994,14 +995,47 @@
         let deferredPrompt = null;
         let realtimeChannel = null;
         
+        // إعدادات التخزين المؤقت
+        const CACHE_EXPIRY = 5 * 60 * 1000; // 5 دقائق
+        
         // ===================== وظائف Supabase =====================
         
         // تحميل الشكاوى من Supabase
-        async function loadComplaints() {
+        async function loadComplaints(forceRefresh = false) {
             try {
+                // التحقق من الاتصال بالإنترنت
+                if (!navigator.onLine) {
+                    await loadFromCache();
+                    showToast('أنت غير متصل بالإنترنت، جاري استخدام البيانات المخزنة', 'warning');
+                    return;
+                }
+                
+                // التحقق من صلاحية البيانات المخزنة مؤقتاً
+                const lastUpdate = localStorage.getItem('complaints-timestamp');
+                const now = Date.now();
+                
+                if (!forceRefresh && lastUpdate && (now - parseInt(lastUpdate) < CACHE_EXPIRY)) {
+                    const cached = localStorage.getItem('complaints-backup');
+                    if (cached) {
+                        complaints = JSON.parse(cached);
+                        renderComplaints();
+                        updateStats();
+                        console.log('📦 استخدام البيانات المخزنة مؤقتاً');
+                        return; // لا تحميل جديد إذا البيانات لا تزال حديثة
+                    }
+                }
+                
+                complaintsList.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-spinner fa-spin"></i>
+                        <h3>جاري تحميل الشكاوى...</h3>
+                        <p>يرجى الانتظار</p>
+                    </div>
+                `;
+                
                 // التحقق من أن supabase مهيأ
                 if (!window.supabase || typeof window.supabase.from !== 'function') {
-                    throw new Error('Supabase غير مهيأ بشكل صحيح');
+                    await initializeSupabase();
                 }
                 
                 // استخدام supabase من النافذة (window)
@@ -1025,25 +1059,77 @@
                 if (error) {
                     console.error('Error loading complaints:', error);
                     showToast('حدث خطأ في تحميل الشكاوى', 'error');
+                    await loadFromCache();
                     return;
                 }
                 
                 complaints = data || [];
+                
+                // ✅ تخزين نسخة احتياطية في localStorage
+                localStorage.setItem('complaints-backup', JSON.stringify(complaints));
+                localStorage.setItem('complaints-timestamp', now.toString());
+                
                 renderComplaints();
                 updateStats();
                 checkForNewComplaints();
                 
+                console.log('✅ تم تحميل الشكاوى بنجاح:', complaints.length, 'شكوى');
+                
             } catch (error) {
                 console.error('Error loading complaints:', error);
                 showToast('حدث خطأ في تحميل الشكاوى: ' + error.message, 'error');
+                await loadFromCache();
+            }
+        }
+        
+        // تحميل البيانات من التخزين المؤقت
+        async function loadFromCache() {
+            try {
+                const cached = localStorage.getItem('complaints-backup');
+                if (cached) {
+                    complaints = JSON.parse(cached);
+                    renderComplaints();
+                    updateStats();
+                    return true;
+                }
+                return false;
+            } catch (error) {
+                console.error('Error loading from cache:', error);
+                return false;
+            }
+        }
+        
+        // تهيئة Supabase يدوياً إذا لزم الأمر
+        async function initializeSupabase() {
+            try {
+                const SUPABASE_URL = 'https://xqccuvhtrxhsrzqgktdj.supabase.co';
+                const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhxY2N1dmh0cnhoc3J6cWdrdGRqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU0MzI5MDMsImV4cCI6MjA3MTAwODkwM30.wDVE-gsAUgjmv82pYKoMMMeF3YRAgFVWg854G5YLpyE';
+                
+                window.supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+                console.log('✅ تم تهيئة Supabase يدوياً');
+                return true;
+            } catch (error) {
+                console.error('❌ فشل في تهيئة Supabase:', error);
+                return false;
             }
         }
         
         // تحديث حالة الشكوى
         async function updateComplaintStatus() {
-            if (!currentComplaintId || !selectedStatus) return;
+            if (!currentComplaintId || !selectedStatus) {
+                showToast('يرجى اختيار حالة جديدة', 'error');
+                return;
+            }
+            
+            if (selectedStatus === currentComplaintStatus) {
+                showToast('الشكوى بالفعل في هذه الحالة', 'info');
+                return;
+            }
             
             try {
+                saveStatusBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الحفظ...';
+                saveStatusBtn.disabled = true;
+                
                 const { error } = await window.supabase
                     .from('complaints')
                     .update({ 
@@ -1055,16 +1141,28 @@
                 if (error) {
                     console.error('Error updating complaint status:', error);
                     showToast('حدث خطأ أثناء تحديث حالة الشكوى', 'error');
+                    saveStatusBtn.innerHTML = '<i class="fas fa-save"></i> حفظ التغييرات';
+                    saveStatusBtn.disabled = false;
                     return;
                 }
                 
                 showToast('تم تحديث حالة الشكوى بنجاح', 'success');
                 complaintModal.style.display = 'none';
-                loadComplaints();
+                
+                // مسح cache للتأكد من الحصول على البيانات الجديدة
+                localStorage.removeItem('complaints-backup');
+                localStorage.removeItem('complaints-timestamp');
+                
+                await loadComplaints(true); // تحميل جديد بالقوة
+                
+                saveStatusBtn.innerHTML = '<i class="fas fa-save"></i> حفظ التغييرات';
+                saveStatusBtn.disabled = false;
                 
             } catch (error) {
                 console.error('Error updating complaint status:', error);
                 showToast('حدث خطأ أثناء تحديث حالة الشكوى', 'error');
+                saveStatusBtn.innerHTML = '<i class="fas fa-save"></i> حفظ التغييرات';
+                saveStatusBtn.disabled = false;
             }
         }
         
@@ -1119,6 +1217,8 @@
                 commentInput.value = '';
                 addCommentBtn.innerHTML = '<i class="fas fa-plus"></i> إضافة تعليق';
                 addCommentBtn.disabled = false;
+                
+                // مسح cache لضمان تحديث التعليقات
                 await loadComments();
                 
             } catch (error) {
@@ -1134,6 +1234,13 @@
             if (!currentComplaintId) return;
             
             try {
+                commentsList.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-spinner fa-spin"></i>
+                        <p>جاري تحميل التعليقات...</p>
+                    </div>
+                `;
+                
                 const { data, error } = await window.supabase
                     .from('complaints')
                     .select('admin_comment')
@@ -1202,38 +1309,17 @@
                 realtimeChannel = window.supabase
                     .channel('complaints-realtime')
                     .on('postgres_changes', {
-                        event: 'INSERT',
+                        event: '*',
                         schema: 'public',
                         table: 'complaints'
                     }, async (payload) => {
-                        console.log('✅ شكوى جديدة عبر Realtime:', payload.new);
-                        const newComplaint = payload.new;
+                        console.log('📡 حدث جديد في Realtime:', payload.eventType);
                         
-                        // إشعار داخلي
-                        showNewComplaintNotification(newComplaint);
+                        // تحديث البيانات تلقائياً
+                        await loadComplaints(true);
                         
-                        // تحديث القائمة تلقائياً
-                        loadComplaints();
-                        
-                        // ✅ إرسال إشعار OneSignal عبر Edge Function
-                        try {
-                            console.log('📨 إرسال إشعار OneSignal عبر Edge Function...');
-                            const response = await fetch('https://xqccuvhtrxhsrzqgktdj.supabase.co/functions/v1/onesignal-notify', {
-                                method: 'POST',
-                                headers: { 
-                                    'Content-Type': 'application/json'
-                                },
-                                body: JSON.stringify({ complaint: newComplaint })
-                            });
-                            
-                            if (!response.ok) {
-                                const errorText = await response.text();
-                                console.error('❌ فشل إرسال إشعار OneSignal:', response.status, errorText);
-                            } else {
-                                console.log('✅ إشعار OneSignal تم إرساله بنجاح');
-                            }
-                        } catch (error) {
-                            console.error('💥 خطأ في إرسال الإشعار:', error);
+                        if (payload.eventType === 'INSERT') {
+                            showNewComplaintNotification(payload.new);
                         }
                     })
                     .subscribe((status) => {
@@ -1435,6 +1521,7 @@
             let icon = 'fa-info-circle';
             if (type === 'success') icon = 'fa-check-circle';
             if (type === 'error') icon = 'fa-exclamation-circle';
+            if (type === 'warning') icon = 'fa-exclamation-triangle';
             
             toast.innerHTML = `<i class="toast-icon fas ${icon}"></i>${message}`;
             toastContainer.appendChild(toast);
@@ -1444,6 +1531,46 @@
                     toast.parentNode.removeChild(toast);
                 }
             }, 5000);
+        }
+        
+        // ===================== تحديث البيانات =====================
+        
+        async function refreshData() {
+            showToast('جاري تحديث البيانات...', 'info');
+            refreshButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري التحديث';
+            refreshButton.disabled = true;
+            
+            try {
+                // مسح cache المتصفح للبيانات
+                if ('caches' in window) {
+                    try {
+                        const cacheNames = await caches.keys();
+                        for (const cacheName of cacheNames) {
+                            await caches.delete(cacheName);
+                        }
+                        console.log('🧹 تم مسح cache المتصفح');
+                    } catch (error) {
+                        console.error('خطأ في مسح الكاش:', error);
+                    }
+                }
+                
+                // مسح localStorage للبيانات المؤقتة
+                localStorage.removeItem('complaints-backup');
+                localStorage.removeItem('complaints-timestamp');
+                localStorage.removeItem('lastComplaintIds');
+                
+                // إعادة تحميل البيانات بقوة
+                await loadComplaints(true);
+                
+                showToast('تم تحديث البيانات بنجاح', 'success');
+                
+            } catch (error) {
+                console.error('خطأ في تحديث البيانات:', error);
+                showToast('حدث خطأ أثناء تحديث البيانات', 'error');
+            } finally {
+                refreshButton.innerHTML = '<i class="fas fa-sync-alt"></i> تحديث البيانات';
+                refreshButton.disabled = false;
+            }
         }
         
         // ===================== PWA و Service Worker =====================
@@ -1484,13 +1611,34 @@
         // تسجيل Service Worker
         function registerServiceWorker() {
             if ('serviceWorker' in navigator) {
-                navigator.serviceWorker.register('/service-worker.js')
-                    .then((registration) => {
-                        console.log('✅ Service Worker registered with scope:', registration.scope);
-                    })
-                    .catch((error) => {
-                        console.error('Service Worker registration failed:', error);
+                // إلغاء تسجيل أي Service Worker قديم أولاً
+                navigator.serviceWorker.getRegistrations().then(registrations => {
+                    registrations.forEach(registration => {
+                        registration.unregister();
+                        console.log('🗑️ تم إلغاء تسجيل Service Worker القديم');
                     });
+                }).then(() => {
+                    // إعادة التسجيل بعد التأخير
+                    setTimeout(() => {
+                        navigator.serviceWorker.register('/service-worker.js')
+                            .then((registration) => {
+                                console.log('✅ Service Worker registered with scope:', registration.scope);
+                                
+                                // التأكد من تحديث Service Worker
+                                registration.addEventListener('updatefound', () => {
+                                    const newWorker = registration.installing;
+                                    newWorker.addEventListener('statechange', () => {
+                                        if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                            showToast('يتوفر تحديث جديد. أعد تحميل الصفحة.', 'info');
+                                        }
+                                    });
+                                });
+                            })
+                            .catch((error) => {
+                                console.error('Service Worker registration failed:', error);
+                            });
+                    }, 1000);
+                });
             }
         }
         
@@ -1498,8 +1646,11 @@
         
         function setupEventListeners() {
             // التصفية والبحث
-            statusFilter.addEventListener('change', loadComplaints);
-            searchInput.addEventListener('input', loadComplaints);
+            statusFilter.addEventListener('change', () => loadComplaints());
+            searchInput.addEventListener('input', () => loadComplaints());
+            
+            // تحديث البيانات
+            refreshButton.addEventListener('click', refreshData);
             
             // إغلاق النموذج
             closeModalBtn.addEventListener('click', () => {
@@ -1537,6 +1688,13 @@
                     addComment();
                 }
             });
+            
+            // تحديث تلقائي كل دقيقة
+            setInterval(() => {
+                if (navigator.onLine) {
+                    loadComplaints();
+                }
+            }, 60000); // كل دقيقة
         }
         
         // ===================== تهيئة التطبيق الرئيسية =====================
@@ -1547,12 +1705,7 @@
             try {
                 // 1. التحقق من Supabase
                 if (!window.supabase || typeof window.supabase.from !== 'function') {
-                    // محاولة تهيئة Supabase يدوياً إذا لم يكن موجوداً
-                    const SUPABASE_URL = 'https://xqccuvhtrxhsrzqgktdj.supabase.co';
-                    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhxY2N1dmh0cnhoc3J6cWdrdGRqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU0MzI5MDMsImV4cCI6MjA3MTAwODkwM30.wDVE-gsAUgjmv82pYKoMMMeF3YRAgFVWg854G5YLpyE';
-                    
-                    window.supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-                    console.log('✅ Supabase تم تهيئته يدوياً');
+                    await initializeSupabase();
                 }
                 
                 // 2. إعداد مستمعي الأحداث
@@ -1570,8 +1723,17 @@
                 // 6. إعداد PWA
                 setupPWA();
                 
+                // 7. مراقبة اتصال الإنترنت
+                window.addEventListener('online', () => {
+                    showToast('تم استعادة الاتصال بالإنترنت', 'success');
+                    loadComplaints(true);
+                });
+                
+                window.addEventListener('offline', () => {
+                    showToast('تم فقدان الاتصال بالإنترنت', 'warning');
+                });
+                
                 console.log('✅ التطبيق مهيأ بالكامل وجاهز للاستخدام');
-                showToast('تم تحميل لوحة التحكم بنجاح', 'success');
                 
             } catch (error) {
                 console.error('❌ فشل في تهيئة التطبيق:', error);
