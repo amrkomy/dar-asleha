@@ -102,6 +102,11 @@
             border-radius: 50px;
             backdrop-filter: blur(10px);
             border: 1px solid rgba(255, 255, 255, 0.2);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .admin-info:hover {
+            background: rgba(255, 255, 255, 0.25);
         }
         .admin-avatar {
             width: 40px;
@@ -135,6 +140,168 @@
         .install-btn:hover {
             transform: translateY(-2px);
             box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+        }
+        /* Auth Modal */
+        .auth-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 2000;
+            animation: fadeIn 0.3s ease;
+            padding: 20px;
+            overflow-y: auto;
+            backdrop-filter: blur(10px);
+        }
+        .auth-container {
+            background: var(--card-bg);
+            border-radius: 20px;
+            width: 100%;
+            max-width: 450px;
+            margin: 60px auto;
+            padding: 2rem;
+            position: relative;
+            animation: slideIn 0.3s ease;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
+            border: 1px solid var(--border);
+        }
+        .auth-tabs {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            border-bottom: 2px solid var(--border);
+            padding-bottom: 1rem;
+        }
+        .auth-tab {
+            flex: 1;
+            text-align: center;
+            padding: 0.75rem;
+            cursor: pointer;
+            border-radius: 10px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            color: var(--text-muted);
+        }
+        .auth-tab.active {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+        }
+        .auth-form {
+            display: none;
+        }
+        .auth-form.active {
+            display: block;
+        }
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            font-size: 1rem;
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text);
+            transition: all 0.3s ease;
+        }
+        .form-group input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.2);
+        }
+        .auth-btn {
+            width: 100%;
+            padding: 1rem;
+            border: none;
+            border-radius: 12px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            font-weight: 600;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 1rem;
+        }
+        .auth-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(14, 165, 233, 0.4);
+        }
+        .auth-switch {
+            text-align: center;
+            margin-top: 1.5rem;
+            color: var(--text-muted);
+        }
+        .auth-switch span {
+            color: var(--primary);
+            cursor: pointer;
+            font-weight: 600;
+        }
+        .auth-switch span:hover {
+            text-decoration: underline;
+        }
+        .close-auth {
+            position: absolute;
+            top: 1rem;
+            left: 1rem;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: var(--text-muted);
+            transition: all 0.3s ease;
+        }
+        .close-auth:hover {
+            color: var(--danger);
+        }
+        .user-menu {
+            position: relative;
+        }
+        .user-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 0.5rem;
+            min-width: 200px;
+            box-shadow: 0 8px 25px var(--shadow-lg);
+            border: 1px solid var(--border);
+            display: none;
+            z-index: 1000;
+        }
+        .user-dropdown.show {
+            display: block;
+        }
+        .user-dropdown-item {
+            padding: 0.75rem 1rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: var(--text);
+            text-decoration: none;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        .user-dropdown-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+        .user-dropdown-item i {
+            width: 20px;
+            color: var(--primary);
+        }
+        .user-dropdown-divider {
+            height: 1px;
+            background: var(--border);
+            margin: 0.5rem 0;
         }
         /* Stats Section */
         .stats-container {
@@ -495,6 +662,9 @@
         .toast.info {
             border-right-color: var(--primary);
         }
+        .toast.warning {
+            border-right-color: var(--warning);
+        }
         .toast.new-complaint {
             border-right-color: var(--warning);
             flex-direction: column;
@@ -513,7 +683,7 @@
         .toast.info .toast-icon {
             color: var(--primary);
         }
-        .toast.new-complaint .toast-icon {
+        .toast.warning .toast-icon {
             color: var(--warning);
         }
         @keyframes toastIn {
@@ -616,6 +786,10 @@
             box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.2);
             background: rgba(255, 255, 255, 0.08);
         }
+        .comment-input:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
         .comments-list {
             margin-top: 1.5rem;
             max-height: 200px;
@@ -656,9 +830,13 @@
             transition: all 0.3s ease;
             box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
         }
-        .comment-submit-btn:hover {
+        .comment-submit-btn:hover:not(:disabled) {
             transform: translateY(-2px);
             box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+        }
+        .comment-submit-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
         }
         .comment-form {
             display: flex;
@@ -691,6 +869,27 @@
             flex: 1;
             font-size: 1rem;
             color: var(--text);
+        }
+        /* Auth Required Overlay */
+        .auth-required {
+            text-align: center;
+            padding: 2rem;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            margin: 1rem 0;
+        }
+        .auth-required i {
+            font-size: 3rem;
+            color: var(--primary);
+            margin-bottom: 1rem;
+        }
+        .auth-required p {
+            margin-bottom: 1rem;
+            color: var(--text-muted);
+        }
+        .auth-required .btn {
+            margin: 0 auto;
+            display: inline-flex;
         }
         /* Scrollbar */
         ::-webkit-scrollbar {
@@ -777,6 +976,10 @@
             .stat-number {
                 font-size: 2rem;
             }
+            .auth-container {
+                margin: 20px auto;
+                padding: 1.5rem;
+            }
         }
         @media (min-width: 768px) {
             .complaint-item {
@@ -824,12 +1027,79 @@
             <button id="refreshButton" class="install-btn" style="background: linear-gradient(135deg, #8b5cf6, #7c3aed);">
                 <i class="fas fa-sync-alt"></i> تحديث البيانات
             </button>
-            <div class="admin-info">
-                <div class="admin-avatar">AD</div>
-                <span>مسؤول النظام</span>
+            <div class="user-menu">
+                <div class="admin-info" id="userInfo">
+                    <div class="admin-avatar" id="userAvatar">AD</div>
+                    <span id="userName">مسؤول النظام</span>
+                </div>
+                <div class="user-dropdown" id="userDropdown">
+                    <div class="user-dropdown-item" id="profileBtn">
+                        <i class="fas fa-user"></i> الملف الشخصي
+                    </div>
+                    <div class="user-dropdown-divider"></div>
+                    <div class="user-dropdown-item" id="logoutBtn">
+                        <i class="fas fa-sign-out-alt"></i> تسجيل الخروج
+                    </div>
+                </div>
             </div>
         </div>
     </header>
+
+    <!-- نافذة تسجيل الدخول/التسجيل -->
+    <div id="authModal" class="auth-modal">
+        <div class="auth-container">
+            <span class="close-auth" id="closeAuth">&times;</span>
+            <div class="auth-tabs">
+                <div class="auth-tab active" id="loginTab">تسجيل الدخول</div>
+                <div class="auth-tab" id="signupTab">إنشاء حساب</div>
+            </div>
+            
+            <!-- نموذج تسجيل الدخول -->
+            <div class="auth-form active" id="loginForm">
+                <div class="form-group">
+                    <label>البريد الإلكتروني</label>
+                    <input type="email" id="loginEmail" placeholder="أدخل البريد الإلكتروني">
+                </div>
+                <div class="form-group">
+                    <label>كلمة المرور</label>
+                    <input type="password" id="loginPassword" placeholder="أدخل كلمة المرور">
+                </div>
+                <button class="auth-btn" id="loginBtn">
+                    <i class="fas fa-sign-in-alt"></i> تسجيل الدخول
+                </button>
+                <div class="auth-switch">
+                    ليس لديك حساب؟ <span id="switchToSignup">إنشاء حساب جديد</span>
+                </div>
+            </div>
+            
+            <!-- نموذج إنشاء حساب -->
+            <div class="auth-form" id="signupForm">
+                <div class="form-group">
+                    <label>الاسم الكامل</label>
+                    <input type="text" id="signupName" placeholder="أدخل الاسم الكامل">
+                </div>
+                <div class="form-group">
+                    <label>البريد الإلكتروني</label>
+                    <input type="email" id="signupEmail" placeholder="أدخل البريد الإلكتروني">
+                </div>
+                <div class="form-group">
+                    <label>كلمة المرور</label>
+                    <input type="password" id="signupPassword" placeholder="أدخل كلمة المرور">
+                </div>
+                <div class="form-group">
+                    <label>تأكيد كلمة المرور</label>
+                    <input type="password" id="signupConfirmPassword" placeholder="أعد إدخال كلمة المرور">
+                </div>
+                <button class="auth-btn" id="signupBtn">
+                    <i class="fas fa-user-plus"></i> إنشاء حساب
+                </button>
+                <div class="auth-switch">
+                    لديك حساب بالفعل؟ <span id="switchToLogin">تسجيل الدخول</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="container">
         <div class="stats-container">
             <div class="stat-card">
@@ -939,10 +1209,17 @@
                     <div id="comments-list" class="comments-list">
                         <!-- التعليقات ستظهر هنا -->
                     </div>
-                    <div class="comment-form">
+                    <div class="comment-form" id="commentForm">
                         <textarea id="comment-input" class="comment-input" placeholder="أضف تعليقًا هنا..."></textarea>
                         <button id="add-comment-btn" class="comment-submit-btn">
                             <i class="fas fa-plus"></i> إضافة تعليق
+                        </button>
+                    </div>
+                    <div id="authRequiredMessage" class="auth-required" style="display: none;">
+                        <i class="fas fa-lock"></i>
+                        <p>يجب تسجيل الدخول لإضافة تعليقات</p>
+                        <button class="btn btn-view" id="showLoginBtn">
+                            <i class="fas fa-sign-in-alt"></i> تسجيل الدخول
                         </button>
                     </div>
                 </div>
@@ -979,6 +1256,32 @@
         const commentsList = document.getElementById('comments-list');
         const installButton = document.getElementById('installButton');
         const refreshButton = document.getElementById('refreshButton');
+        const commentForm = document.getElementById('commentForm');
+        const authRequiredMessage = document.getElementById('authRequiredMessage');
+        const showLoginBtn = document.getElementById('showLoginBtn');
+        
+        // عناصر المصادقة
+        const authModal = document.getElementById('authModal');
+        const closeAuth = document.getElementById('closeAuth');
+        const loginTab = document.getElementById('loginTab');
+        const signupTab = document.getElementById('signupTab');
+        const loginForm = document.getElementById('loginForm');
+        const signupForm = document.getElementById('signupForm');
+        const loginBtn = document.getElementById('loginBtn');
+        const signupBtn = document.getElementById('signupBtn');
+        const switchToSignup = document.getElementById('switchToSignup');
+        const switchToLogin = document.getElementById('switchToLogin');
+        const loginEmail = document.getElementById('loginEmail');
+        const loginPassword = document.getElementById('loginPassword');
+        const signupName = document.getElementById('signupName');
+        const signupEmail = document.getElementById('signupEmail');
+        const signupPassword = document.getElementById('signupPassword');
+        const signupConfirmPassword = document.getElementById('signupConfirmPassword');
+        const userInfo = document.getElementById('userInfo');
+        const userDropdown = document.getElementById('userDropdown');
+        const logoutBtn = document.getElementById('logoutBtn');
+        const userName = document.getElementById('userName');
+        const userAvatar = document.getElementById('userAvatar');
         
         // 2. إحصائيات
         const totalComplaints = document.getElementById('total-complaints');
@@ -994,9 +1297,257 @@
         let lastComplaintIds = new Set();
         let deferredPrompt = null;
         let realtimeChannel = null;
+        let currentUser = null;
         
         // إعدادات التخزين المؤقت
         const CACHE_EXPIRY = 5 * 60 * 1000; // 5 دقائق
+        
+        // ===================== وظائف المصادقة =====================
+        
+        // تهيئة حالة المستخدم
+        async function initAuth() {
+            try {
+                const { data: { session }, error } = await window.supabase.auth.getSession();
+                
+                if (error) throw error;
+                
+                if (session) {
+                    currentUser = session.user;
+                    await loadUserProfile();
+                    updateUIForAuthenticatedUser();
+                } else {
+                    currentUser = null;
+                    updateUIForUnauthenticatedUser();
+                }
+            } catch (error) {
+                console.error('خطأ في تهيئة المصادقة:', error);
+                currentUser = null;
+                updateUIForUnauthenticatedUser();
+            }
+            
+            // الاستماع لتغييرات حالة المصادقة
+            window.supabase.auth.onAuthStateChange((event, session) => {
+                console.log('تغيير حالة المصادقة:', event);
+                
+                if (event === 'SIGNED_IN' && session) {
+                    currentUser = session.user;
+                    loadUserProfile();
+                    updateUIForAuthenticatedUser();
+                    showToast('تم تسجيل الدخول بنجاح', 'success');
+                } else if (event === 'SIGNED_OUT') {
+                    currentUser = null;
+                    updateUIForUnauthenticatedUser();
+                    showToast('تم تسجيل الخروج', 'info');
+                }
+            });
+        }
+        
+        // تحميل بيانات المستخدم
+        async function loadUserProfile() {
+            try {
+                const { data, error } = await window.supabase
+                    .from('profiles')
+                    .select('full_name, avatar_url')
+                    .eq('id', currentUser.id)
+                    .single();
+                
+                if (error && error.code !== 'PGRST116') {
+                    console.error('خطأ في تحميل الملف الشخصي:', error);
+                }
+                
+                if (data) {
+                    const displayName = data.full_name || currentUser.email?.split('@')[0] || 'مستخدم';
+                    userName.textContent = displayName;
+                    
+                    // تحديث الصورة الرمزية
+                    if (data.avatar_url) {
+                        userAvatar.innerHTML = `<img src="${data.avatar_url}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">`;
+                    } else {
+                        userAvatar.textContent = displayName.charAt(0).toUpperCase();
+                    }
+                } else {
+                    userName.textContent = currentUser.email?.split('@')[0] || 'مستخدم';
+                    userAvatar.textContent = (currentUser.email?.charAt(0) || 'U').toUpperCase();
+                }
+            } catch (error) {
+                console.error('خطأ في تحميل الملف الشخصي:', error);
+            }
+        }
+        
+        // تحديث الواجهة للمستخدم المسجل
+        function updateUIForAuthenticatedUser() {
+            // تفعيل التعليقات
+            commentInput.disabled = false;
+            addCommentBtn.disabled = false;
+            authRequiredMessage.style.display = 'none';
+            commentForm.style.display = 'flex';
+            
+            // تحديث القائمة المنسدلة
+            document.querySelectorAll('.user-dropdown-item').forEach(item => item.style.display = 'flex');
+        }
+        
+        // تحديث الواجهة للمستخدم غير المسجل
+        function updateUIForUnauthenticatedUser() {
+            // تعطيل التعليقات
+            commentInput.disabled = true;
+            addCommentBtn.disabled = true;
+            authRequiredMessage.style.display = 'block';
+            commentForm.style.display = 'none';
+            
+            // تحديث معلومات المستخدم
+            userName.textContent = 'تسجيل الدخول';
+            userAvatar.textContent = '👤';
+            
+            // إخفاء عناصر القائمة المنسدلة غير المناسبة
+            document.querySelectorAll('.user-dropdown-item:not(#profileBtn)').forEach(item => item.style.display = 'none');
+            document.getElementById('profileBtn').style.display = 'none';
+        }
+        
+        // تسجيل الدخول
+        async function handleLogin() {
+            const email = loginEmail.value.trim();
+            const password = loginPassword.value.trim();
+            
+            if (!email || !password) {
+                showToast('يرجى إدخال البريد الإلكتروني وكلمة المرور', 'error');
+                return;
+            }
+            
+            try {
+                loginBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري تسجيل الدخول...';
+                loginBtn.disabled = true;
+                
+                const { data, error } = await window.supabase.auth.signInWithPassword({
+                    email,
+                    password
+                });
+                
+                if (error) throw error;
+                
+                authModal.style.display = 'none';
+                clearAuthInputs();
+                
+            } catch (error) {
+                console.error('خطأ في تسجيل الدخول:', error);
+                showToast('فشل تسجيل الدخول: ' + error.message, 'error');
+            } finally {
+                loginBtn.innerHTML = '<i class="fas fa-sign-in-alt"></i> تسجيل الدخول';
+                loginBtn.disabled = false;
+            }
+        }
+        
+        // إنشاء حساب جديد
+        async function handleSignup() {
+            const name = signupName.value.trim();
+            const email = signupEmail.value.trim();
+            const password = signupPassword.value.trim();
+            const confirmPassword = signupConfirmPassword.value.trim();
+            
+            if (!name || !email || !password || !confirmPassword) {
+                showToast('يرجى ملء جميع الحقول', 'error');
+                return;
+            }
+            
+            if (password !== confirmPassword) {
+                showToast('كلمة المرور غير متطابقة', 'error');
+                return;
+            }
+            
+            if (password.length < 6) {
+                showToast('كلمة المرور يجب أن تكون 6 أحرف على الأقل', 'error');
+                return;
+            }
+            
+            try {
+                signupBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري إنشاء الحساب...';
+                signupBtn.disabled = true;
+                
+                // إنشاء المستخدم
+                const { data, error } = await window.supabase.auth.signUp({
+                    email,
+                    password,
+                    options: {
+                        data: {
+                            full_name: name
+                        }
+                    }
+                });
+                
+                if (error) throw error;
+                
+                // إنشاء ملف شخصي
+                if (data.user) {
+                    const { error: profileError } = await window.supabase
+                        .from('profiles')
+                        .insert([
+                            {
+                                id: data.user.id,
+                                full_name: name,
+                                email: email
+                            }
+                        ]);
+                    
+                    if (profileError) {
+                        console.error('خطأ في إنشاء الملف الشخصي:', profileError);
+                    }
+                }
+                
+                showToast('تم إنشاء الحساب بنجاح! تم إرسال رابط التأكيد إلى بريدك الإلكتروني.', 'success');
+                authModal.style.display = 'none';
+                clearAuthInputs();
+                
+            } catch (error) {
+                console.error('خطأ في إنشاء الحساب:', error);
+                showToast('فشل إنشاء الحساب: ' + error.message, 'error');
+            } finally {
+                signupBtn.innerHTML = '<i class="fas fa-user-plus"></i> إنشاء حساب';
+                signupBtn.disabled = false;
+            }
+        }
+        
+        // تسجيل الخروج
+        async function handleLogout() {
+            try {
+                await window.supabase.auth.signOut();
+                userDropdown.classList.remove('show');
+                closeModalIfOpen();
+            } catch (error) {
+                console.error('خطأ في تسجيل الخروج:', error);
+                showToast('فشل تسجيل الخروج', 'error');
+            }
+        }
+        
+        // إغلاق النموذج إذا كان مفتوحاً
+        function closeModalIfOpen() {
+            if (complaintModal.style.display === 'block') {
+                complaintModal.style.display = 'none';
+            }
+        }
+        
+        // مسح مدخلات المصادقة
+        function clearAuthInputs() {
+            loginEmail.value = '';
+            loginPassword.value = '';
+            signupName.value = '';
+            signupEmail.value = '';
+            signupPassword.value = '';
+            signupConfirmPassword.value = '';
+        }
+        
+        // تبديل التبويبات
+        function switchToLoginTab() {
+            loginTab.classList.add('active');
+            signupTab.classList.remove('active');
+            loginForm.classList.add('active');
+            signupForm.classList.remove('active');
+        }
+        
+        function switchToSignupTab() {
+            signupTab.classList.add('active');
+            loginTab.classList.remove('active');
+            signupForm.classList.add('active');
+            loginForm.classList.remove('active');
+        }
         
         // ===================== وظائف Supabase =====================
         
@@ -1021,7 +1572,7 @@
                         renderComplaints();
                         updateStats();
                         console.log('📦 استخدام البيانات المخزنة مؤقتاً');
-                        return; // لا تحميل جديد إذا البيانات لا تزال حديثة
+                        return;
                     }
                 }
                 
@@ -1038,7 +1589,6 @@
                     await initializeSupabase();
                 }
                 
-                // استخدام supabase من النافذة (window)
                 let query = window.supabase
                     .from('complaints')
                     .select('*')
@@ -1126,6 +1676,13 @@
                 return;
             }
             
+            // التحقق من تسجيل الدخول
+            if (!currentUser) {
+                showToast('يجب تسجيل الدخول لتحديث حالة الشكوى', 'error');
+                authModal.style.display = 'block';
+                return;
+            }
+            
             try {
                 saveStatusBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الحفظ...';
                 saveStatusBtn.disabled = true;
@@ -1168,6 +1725,12 @@
         
         // إضافة تعليق جديد
         async function addComment() {
+            if (!currentUser) {
+                showToast('يجب تسجيل الدخول أولاً', 'error');
+                authModal.style.display = 'block';
+                return;
+            }
+            
             if (!currentComplaintId || !commentInput.value.trim()) {
                 showToast('يرجى كتابة تعليق أولاً', 'error');
                 return;
@@ -1177,6 +1740,9 @@
                 const commentText = commentInput.value.trim();
                 addCommentBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الإضافة...';
                 addCommentBtn.disabled = true;
+                
+                // الحصول على اسم المستخدم
+                const userName = currentUser.user_metadata?.full_name || currentUser.email?.split('@')[0] || 'مستخدم';
                 
                 const { data: complaintData, error: fetchError } = await window.supabase
                     .from('complaints')
@@ -1194,7 +1760,7 @@
                 
                 const now = new Date();
                 const dateTime = now.toLocaleString('ar-EG');
-                const newComment = `[${dateTime}] مسؤول النظام: ${commentText}\n${complaintData.admin_comment || ''}`;
+                const newComment = `[${dateTime}] ${userName}: ${commentText}\n${complaintData.admin_comment || ''}`;
                 
                 const { error } = await window.supabase
                     .from('complaints')
@@ -1689,6 +2255,60 @@
                 }
             });
             
+            // مستمعي أحداث المصادقة
+            userInfo.addEventListener('click', (e) => {
+                e.stopPropagation();
+                userDropdown.classList.toggle('show');
+            });
+            
+            document.addEventListener('click', (e) => {
+                if (!userInfo.contains(e.target)) {
+                    userDropdown.classList.remove('show');
+                }
+            });
+            
+            logoutBtn.addEventListener('click', handleLogout);
+            
+            profileBtn.addEventListener('click', () => {
+                userDropdown.classList.remove('show');
+                showToast('قريباً...', 'info');
+            });
+            
+            // فتح نافذة المصادقة
+            showLoginBtn.addEventListener('click', () => {
+                authModal.style.display = 'block';
+            });
+            
+            // إغلاق نافذة المصادقة
+            closeAuth.addEventListener('click', () => {
+                authModal.style.display = 'none';
+            });
+            
+            window.addEventListener('click', (event) => {
+                if (event.target === authModal) {
+                    authModal.style.display = 'none';
+                }
+            });
+            
+            // تبديل التبويبات
+            loginTab.addEventListener('click', switchToLoginTab);
+            signupTab.addEventListener('click', switchToSignupTab);
+            switchToSignup.addEventListener('click', switchToSignupTab);
+            switchToLogin.addEventListener('click', switchToLoginTab);
+            
+            // أزرار المصادقة
+            loginBtn.addEventListener('click', handleLogin);
+            signupBtn.addEventListener('click', handleSignup);
+            
+            // إدخال كلمة المرور
+            loginPassword.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') handleLogin();
+            });
+            
+            signupConfirmPassword.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') handleSignup();
+            });
+            
             // تحديث تلقائي كل دقيقة
             setInterval(() => {
                 if (navigator.onLine) {
@@ -1708,22 +2328,25 @@
                     await initializeSupabase();
                 }
                 
-                // 2. إعداد مستمعي الأحداث
+                // 2. تهيئة المصادقة
+                await initAuth();
+                
+                // 3. إعداد مستمعي الأحداث
                 setupEventListeners();
                 
-                // 3. تحميل الشكاوى الأولية
+                // 4. تحميل الشكاوى الأولية
                 await loadComplaints();
                 
-                // 4. بدء Realtime listener
+                // 5. بدء Realtime listener
                 startRealtimeListener();
                 
-                // 5. تسجيل Service Worker
+                // 6. تسجيل Service Worker
                 registerServiceWorker();
                 
-                // 6. إعداد PWA
+                // 7. إعداد PWA
                 setupPWA();
                 
-                // 7. مراقبة اتصال الإنترنت
+                // 8. مراقبة اتصال الإنترنت
                 window.addEventListener('online', () => {
                     showToast('تم استعادة الاتصال بالإنترنت', 'success');
                     loadComplaints(true);
